@@ -5,6 +5,7 @@
 
 """A simple web interactive chat demo based on gradio."""
 import os
+import sys
 from argparse import ArgumentParser
 
 import gradio as gr
@@ -15,7 +16,7 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 from transformers.generation import GenerationConfig
 
 
-DEFAULT_CKPT_PATH = 'Qwen/Qwen-7B-Chat'
+DEFAULT_CKPT_PATH = sys.argv[1]
 
 
 def _get_args():
