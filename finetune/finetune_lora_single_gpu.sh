@@ -36,15 +36,16 @@ done
 
 export CUDA_VISIBLE_DEVICES=0
 
-python finetune.py \
+/opt/large-model/qwen/qwen1/Qwen/venv/bin/python \
+/opt/large-model/qwen/qwen1/Qwen/finetune.py \
   --model_name_or_path $MODEL \
   --data_path $DATA \
   --bf16 True \
-  --output_dir output_qwen \
-  --num_train_epochs 5 \
+  --output_dir /opt/large-model/qwen/qwen1/Qwen/finetune/output_qwen \
+  --num_train_epochs 13 \
   --per_device_train_batch_size 2 \
   --per_device_eval_batch_size 1 \
-  --gradient_accumulation_steps 8 \
+  --gradient_accumulation_steps 1 \
   --evaluation_strategy "no" \
   --save_strategy "steps" \
   --save_steps 1000 \
@@ -56,7 +57,7 @@ python finetune.py \
   --lr_scheduler_type "cosine" \
   --logging_steps 1 \
   --report_to "none" \
-  --model_max_length 512 \
+  --model_max_length 1024 \
   --lazy_preprocess True \
   --gradient_checkpointing \
   --use_lora

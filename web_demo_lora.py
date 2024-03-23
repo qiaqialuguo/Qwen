@@ -5,6 +5,7 @@
 
 """A simple web interactive chat demo based on gradio."""
 import os
+import time
 from argparse import ArgumentParser
 
 import gradio as gr
@@ -48,12 +49,12 @@ def _load_model_tokenizer(args):
         device_map = "cuda"
 
     model = AutoModelForCausalLM.from_pretrained(
-        args.checkpoint_path,
+        '/opt/large-model/qwen/qwen1/Qwen/finetune/output_qwen',
         device_map=device_map,
         trust_remote_code=True,
         resume_download=True
-    # , bnb_4bit_compute_dtype = torch.float16
-    # , load_in_4bit = True
+    , bnb_4bit_compute_dtype = torch.float16
+    , load_in_4bit = True
     ).eval()
 
     config = GenerationConfig.from_pretrained(
@@ -117,8 +118,8 @@ def _gc():
 
 
 def _launch_demo(args, model, tokenizer, config):
-
     def predict(_query, _chatbot, _task_history):
+        start_time = time.time()
         print(f"User: {_parse_text(_query)}")
         _chatbot.append((_parse_text(_query), ""))
         full_response = ""
@@ -132,6 +133,9 @@ def _launch_demo(args, model, tokenizer, config):
         print(f"History: {_task_history}")
         _task_history.append((_query, full_response))
         print(f"Qwen-Chat: {_parse_text(full_response)}")
+        end_time = time.time()
+        print('生成耗时：', end_time - start_time, '文字长度：', len(_parse_text(full_response)), '每秒字数：',
+              len(_parse_text(full_response)) / (end_time - start_time))
 
     def regenerate(_chatbot, _task_history):
         if not _task_history:
