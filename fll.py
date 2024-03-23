@@ -1,4 +1,3 @@
-import pandas as pd
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from transformers.generation import GenerationConfig
