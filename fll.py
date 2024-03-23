@@ -22,7 +22,6 @@ model = AutoModelForCausalLM.from_pretrained(path
 # 可指定不同的生成长度、top_p等相关超参
 model.generation_config = GenerationConfig.from_pretrained(path, trust_remote_code=True)
 
-
 prompt = '转换成阿拉伯数字：一三八六六六六七七七七'
 prompt = '讲一个100字的故事'
 import time
