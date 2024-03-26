@@ -1,7 +1,11 @@
+import datetime
+import threading
+
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from transformers.generation import GenerationConfig
-path = '../Qwen-7B-Chat'
+# path = '../Qwen-7B-Chat'
+path = '/opt/large-model/gemma/gemma-7b'
 # 可选的模型包括: "Qwen/Qwen-7B-Chat", "Qwen/Qwen-14B-Chat"
 tokenizer = AutoTokenizer.from_pretrained(path, trust_remote_code=True)
 
@@ -26,6 +30,11 @@ prompt = '转换成阿拉伯数字：一三八六六六六七七七七'
 prompt = '讲一个100字的故事'
 import time
 print(time.time())
+
+
+print('start:'+str(datetime.datetime.now()))
 r0, _ = model.chat(query=prompt, tokenizer=tokenizer, history=None)
+print('end:'+str(datetime.datetime.now()))
 print(r0)
 print(time.time())
+print('end:'+str(datetime.datetime.now()))

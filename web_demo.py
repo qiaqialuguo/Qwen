@@ -5,6 +5,7 @@
 
 """A simple web interactive chat demo based on gradio."""
 import os
+import time
 from argparse import ArgumentParser
 
 import gradio as gr
@@ -122,7 +123,7 @@ def _launch_demo(args, model, tokenizer, config):
         print(f"User: {_parse_text(_query)}")
         _chatbot.append((_parse_text(_query), ""))
         full_response = ""
-
+        start_time = time.time()
         for response in model.chat_stream(tokenizer, _query, history=_task_history, generation_config=config):
             _chatbot[-1] = (_parse_text(_query), _parse_text(response))
 
@@ -132,6 +133,9 @@ def _launch_demo(args, model, tokenizer, config):
         print(f"History: {_task_history}")
         _task_history.append((_query, full_response))
         print(f"Qwen-Chat: {_parse_text(full_response)}")
+        end_time = time.time()
+        print('生成耗时：', end_time - start_time, '文字长度：', len(_parse_text(full_response)), '每秒字数：',
+              len(_parse_text(full_response)) / (end_time - start_time))
 
     def regenerate(_chatbot, _task_history):
         if not _task_history:

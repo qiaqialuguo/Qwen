@@ -433,6 +433,7 @@ async def create_chat_completion(request: ChatCompletionRequest):
                                               system='你的回答在5个字内')
     else:
         print(datetime.datetime.now())
+        time.sleep(100000)
         start_time = time.time()
         response, _ = model.chat(
             tokenizer,
@@ -447,6 +448,7 @@ async def create_chat_completion(request: ChatCompletionRequest):
         print(f'问题：{query}\n回答：{response}\n')
         print('生成耗时：', end_time - start_time, '文字长度：', len(response), '每秒字数：',
                len(response)/(end_time - start_time))
+        print(datetime.datetime.now())
     _gc()
 
     response = trim_stop_words(response, stop_words)
