@@ -53,8 +53,8 @@ def _load_model_tokenizer(args):
         device_map=device_map,
         trust_remote_code=True,
         resume_download=True
-    # , bnb_4bit_compute_dtype = torch.float16
-    # , load_in_4bit = True
+    , bnb_4bit_compute_dtype = torch.float16
+    , load_in_4bit = True
     ).eval()
 
     config = GenerationConfig.from_pretrained(
