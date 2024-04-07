@@ -80,8 +80,14 @@ def tool_wrapper_for_qwen_price():
 
 def tool_wrapper_for_qwen_appointment():
     def tool_(query):
-        print(query)
         query = json.loads(query)["query"]
+        # if (query == '保养' or query == '维修' or query == '修车'):
+        #     query = query_user
+        #     response = requests.get(f'http://192.168.110.138:9169/customer-service/bava/appointment?params={query}')
+        # else:
+        query_user.append(query)
+        query = query_user
+        print(query)
         response = requests.get(f'http://192.168.110.138:9169/customer-service/bava/appointment?params={query}')
         # 处理响应
         if response.status_code == 200:
@@ -170,7 +176,7 @@ TOOLS = [
         'parameters': [{
             "name": "query",
             "type": "string",
-            "description": "query为json的kei,value是time（What day and what time），保养还是维修，用空格分割",
+            "description": "query为json的key,value是time（What day and what time）和项目（项目包含保养或维修），用空格分割",
             'required': True
         }],
         'tool_api': tool_wrapper_for_qwen_appointment()
@@ -618,6 +624,7 @@ def text_complete_last_message(history, stop_words_ids, gen_kwargs, system):
     return output
 
 history_tmp = []
+query_user = []
 @app.post('/v1/chat/completions', response_model=ChatCompletionResponse)
 async def create_chat_completion(request: ChatCompletionRequest):
     global model, tokenizer
@@ -672,6 +679,9 @@ async def create_chat_completion(request: ChatCompletionRequest):
                                               gen_kwargs=gen_kwargs,
                                               system=system)
     else:
+        query_user.append(query)
+        if len(query_user) > 3:
+            del query_user[:len(query_user) - 3]
         prompt = build_planning_prompt(TOOLS, query)  # 组织prompt
         model.generation_config.do_sample = False  # greedy 禁用采样，贪婪
         response, _ = model.chat(tokenizer, prompt, history=history_tmp,
