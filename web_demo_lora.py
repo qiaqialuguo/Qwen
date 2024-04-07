@@ -7,6 +7,7 @@
 import os
 import time
 from argparse import ArgumentParser
+import datetime
 
 import gradio as gr
 import mdtex2html
@@ -40,7 +41,9 @@ def _get_args():
 
 def _load_model_tokenizer(args):
     tokenizer = AutoTokenizer.from_pretrained(
-        args.checkpoint_path, trust_remote_code=True, resume_download=True,
+        args.checkpoint_path, trust_remote_code=True, resume_download=True
+        , bnb_4bit_compute_dtype=torch.float16
+        , load_in_5bit=True
     )
 
     if args.cpu_only:
@@ -49,7 +52,7 @@ def _load_model_tokenizer(args):
         device_map = "cuda"
 
     model = AutoModelForCausalLM.from_pretrained(
-        args.checkpoint_path,
+        '/opt/large-model/qwen/qwen1/Qwen/finetune/output_qwen',
         device_map=device_map,
         trust_remote_code=True,
         resume_download=True
@@ -58,7 +61,7 @@ def _load_model_tokenizer(args):
     ).eval()
 
     config = GenerationConfig.from_pretrained(
-        args.checkpoint_path, trust_remote_code=True, resume_download=True,
+        args.checkpoint_path, trust_remote_code=True, resume_download=True
     )
 
     return model, tokenizer, config
@@ -118,13 +121,13 @@ def _gc():
 
 
 def _launch_demo(args, model, tokenizer, config):
-
     def predict(_query, _chatbot, _task_history):
+        start_time = time.time()
         print(f"User: {_parse_text(_query)}")
         _chatbot.append((_parse_text(_query), ""))
         full_response = ""
-        start_time = time.time()
-        for response in model.chat_stream(tokenizer, _query, history=_task_history, generation_config=config):
+        print(datetime.datetime.now())
+        for response in model.chat_stream(tokenizer, _query, history=_task_history, generation_config=config,max_new_tokens=15000):
             _chatbot[-1] = (_parse_text(_query), _parse_text(response))
 
             yield _chatbot
@@ -136,6 +139,7 @@ def _launch_demo(args, model, tokenizer, config):
         end_time = time.time()
         print('生成耗时：', end_time - start_time, '文字长度：', len(_parse_text(full_response)), '每秒字数：',
               len(_parse_text(full_response)) / (end_time - start_time))
+        print(datetime.datetime.now())
 
     def regenerate(_chatbot, _task_history):
         if not _task_history:

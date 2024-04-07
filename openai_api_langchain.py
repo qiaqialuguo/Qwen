@@ -24,6 +24,242 @@ from starlette.requests import Request
 from starlette.responses import Response
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from transformers.generation import GenerationConfig
+import json
+import os
+from typing import Tuple
+import requests
+
+import torch
+from langchain import SerpAPIWrapper
+from langchain_experimental.tools import PythonAstREPLTool
+from transformers import AutoTokenizer, AutoModelForCausalLM, GenerationConfig
+
+# 为了使用谷歌搜索（SERPAPI）， 您需要自行申请它们的 API KEY，然后填入此处
+os.environ['SERPAPI_API_KEY'] = 'a89827b916b3fbc639d06b01eeaf585d83131bf1070ec2fb937cb22639b66339'
+
+search = SerpAPIWrapper()
+python = PythonAstREPLTool()
+
+
+def tool_wrapper_for_qwen(tool):
+    def tool_(query):
+        query = json.loads(query)["query"]
+        return tool.run(query)
+
+    return tool_
+
+def tool_wrapper_for_qwen_configuration():
+    def tool_(query):
+        query = json.loads(query)["query"]
+        response = requests.get(f'http://192.168.110.138:9169/customer-service/bava/getCarConfig?params={query}')
+        # 处理响应
+        if response.status_code == 200:
+            # 请求成功
+            data = response.json()  # 获取响应数据，如果是 JSON 格式
+            return str(data)
+        else:
+            # 请求失败
+            return '查询失败，请检查'
+        # return '车辆配置包括LED大灯、全景天窗、电动尾门、真皮座椅、自动空调，价格是21.59万'
+    return tool_
+
+def tool_wrapper_for_qwen_price():
+    def tool_(query):
+        query = json.loads(query)["query"]
+        response = requests.get(f'http://192.168.110.138:9169/customer-service/bava/getCarPrice?params={query}')
+        # 处理响应
+        if response.status_code == 200:
+            # 请求成功
+            data = response.json()  # 获取响应数据，如果是 JSON 格式
+            return str(data)
+        else:
+            # 请求失败
+            return '查询失败，请检查'
+        # return '价格是21.59万'
+    return tool_
+
+def tool_wrapper_for_qwen_appointment():
+    def tool_(query):
+        print(query)
+        query = json.loads(query)["query"]
+        response = requests.get(f'http://192.168.110.138:9169/customer-service/bava/appointment?params={query}')
+        # 处理响应
+        if response.status_code == 200:
+        #     请求成功
+        #     data = response.json()  # 获取响应数据，如果是 JSON 格式
+            return response.text
+        else:
+            # 请求失败
+            return '抱歉，记录失败'
+    return tool_
+
+
+
+
+# 以下是给千问看的工具描述：
+TOOLS = [
+    # {
+    #     'name_for_human':
+    #         'google search',
+    #     'name_for_model':
+    #         'Search',
+    #     'description_for_model':
+    #         'useful for when you need to answer questions about current events.',
+    #     'parameters': [{
+    #         "name": "query",
+    #         "type": "string",
+    #         "description": "search query of google",
+    #         'required': True
+    #     }],
+    #     'tool_api': tool_wrapper_for_qwen(search)
+    # },
+    # {
+    #     'name_for_human':
+    #         'python',
+    #     'name_for_model':
+    #         'python',
+    #     'description_for_model':
+    #         "A Python shell. Use this to execute python commands include Math,current time,date or day of the week. When using this tool, sometimes output is abbreviated - Make sure it does not look abbreviated before using it in your answer. "
+    #         "Don't add comments to your python code.",
+    #     'parameters': [{
+    #         "name": "query",
+    #         "type": "string",
+    #         "description": "a valid python command.",
+    #         'required': True
+    #     }],
+    #     'tool_api': tool_wrapper_for_qwen(python)
+    # },
+    {
+        'name_for_human':
+            'the_car_price',
+        'name_for_model':
+            'the_car_price',
+        'description_for_model':
+            "A database of car's price. 使用这个工具查询车辆的价格(price,how much，多少钱)，只在明确说到车辆的价格时使用这个工具,只说车型时不用这个工具，用查询配置的工具,价格很多时整理成一个价格范围",
+        'parameters': [{
+            "name": "query",
+            "type": "string",
+            "description": "汽车的年款,品牌,车系，年款默认2024款",
+            'required': True
+        }],
+        'tool_api': tool_wrapper_for_qwen_price()
+    },
+    {
+        'name_for_human':
+            'the_car_configuration',
+        'name_for_model':
+            'the_car_configuration',
+        'description_for_model':
+            "A database of car's configuration. 使用这个工具查询车辆的配置(参数，车辆信息)，在查询车辆的配置时使用这个工具，只提供车系的话用这个工具,配置信息比较多时，整理成一句话。",
+        'parameters': [{
+            "name": "query",
+            "type": "string",
+            "description": "汽车的年款,品牌,车系，年款默认2024款",
+            'required': True
+        }],
+        'tool_api': tool_wrapper_for_qwen_configuration()
+    },
+    {
+        'name_for_human':
+            'the_car_appointment',
+        'name_for_model':
+            'the_car_appointment',
+        'description_for_model':
+            "记录user的预约信息. 使用这个工具记录用户的预约信息，至少要有time和预约的项目，时间要具体到哪一天和几点钟，小于12点的话要继续问上午还是下午还是晚上，项目包括保养（不需要问具体的保养项目）和维修（修车和换零件都属于维修），"
+            "也就是预约干什么，维修或保养二选一即可，不需要问具体维修什么或保养什么，如果用户没说time或项目就让用户在一句话中描述时间和项目，If the user's response is not complete in terms of which day or what time, ask them for the time，收集全时间和项目后，调用这个工具。",
+        'parameters': [{
+            "name": "query",
+            "type": "string",
+            "description": "query为json的kei,value是time（What day and what time），保养还是维修，用空格分割",
+            'required': True
+        }],
+        'tool_api': tool_wrapper_for_qwen_appointment()
+    }
+
+]
+TOOL_DESC = """{name_for_model}: Call this tool to interact with the {name_for_human} API. What is the {name_for_human} API useful for? {description_for_model} Parameters: {parameters} Format the arguments as a JSON object."""
+
+REACT_PROMPT = """Answer the following questions as best you can. You have access to the following tools:
+
+{tool_descs}
+
+Use the following format:
+
+Question: the input question you must answer
+Thought: you should always think about what to do
+Action: the action to take, should be one of [{tool_names}]
+Action Input: the input to the action with json formatted
+Observation: the result of the action
+... (this Thought/Action/Action Input/Observation can be repeated zero or more times)
+Thought: I now know the final answer
+Final Answer: the final answer to the original input question
+
+Begin!
+
+Question: {query}"""
+
+
+def build_planning_prompt(TOOLS, query):
+    #  ensure_ascii=False：非ascii不会被转义
+    tool_descs = []
+    tool_names = []
+    for info in TOOLS:
+        tool_descs.append(
+            TOOL_DESC.format(
+                name_for_model=info['name_for_model'],
+                name_for_human=info['name_for_human'],
+                description_for_model=info['description_for_model'],
+                parameters=json.dumps(
+                    info['parameters'], ensure_ascii=False),
+            )
+        )
+        tool_names.append(info['name_for_model'])
+    tool_descs = '\n\n'.join(tool_descs)
+    tool_names = ','.join(tool_names)
+
+    prompt = REACT_PROMPT.format(tool_descs=tool_descs, tool_names=tool_names, query=query)
+    return prompt
+
+
+# prompt_1 = build_planning_prompt(TOOLS[0:1], query="加拿大2023年人口统计数字是多少？")
+# print(prompt_1)
+
+
+
+# stop = ["Observation:", "Observation:\n"]
+# react_stop_words_tokens = [TOKENIZER.encode(stop_) for stop_ in stop]
+# response_1, _ = MODEL.chat(TOKENIZER, prompt_1, history=None, stop_words_ids=react_stop_words_tokens)
+# print(response_1)
+
+
+def parse_latest_plugin_call(text: str) -> Tuple[str, str]:
+    i = text.rfind('\nAction:')
+    j = text.rfind('\nAction Input:')
+    k = text.rfind('\nObservation:')
+    if 0 <= i < j:  # If the text has `Action` and `Action input`,
+        if k < j:  # but does not contain `Observation`,
+            # then it is likely that `Observation` is ommited by the LLM,
+            # because the output text may have discarded the stop word.
+            text = text.rstrip() + '\nObservation:'  # Add it back.
+            k = text.rfind('\nObservation:')
+    if 0 <= i < j < k:
+        plugin_name = text[i + len('\nAction:'):j].strip()
+        plugin_args = text[j + len('\nAction Input:'):k].strip()
+        return plugin_name, plugin_args
+    return '', ''
+
+
+def use_api(tools, response):
+    use_toolname, action_input = parse_latest_plugin_call(response)
+    if use_toolname == "":
+        return "no tool founds"
+
+    used_tool_meta = list(filter(lambda x: x["name_for_model"] == use_toolname, tools))
+    if len(used_tool_meta) == 0:
+        return "no tool founds"
+    print('使用的工具：' + used_tool_meta[0]["name_for_model"])
+    api_output = used_tool_meta[0]["tool_api"](action_input)
+    return api_output
 
 
 class BasicAuthMiddleware(BaseHTTPMiddleware):
@@ -381,7 +617,7 @@ def text_complete_last_message(history, stop_words_ids, gen_kwargs, system):
     print(f'<completion>\n{prompt}\n<!-- *** -->\n{output}\n</completion>')
     return output
 
-
+history_tmp = []
 @app.post('/v1/chat/completions', response_model=ChatCompletionResponse)
 async def create_chat_completion(request: ChatCompletionRequest):
     global model, tokenizer
@@ -423,6 +659,11 @@ async def create_chat_completion(request: ChatCompletionRequest):
                            system=system)
         return EventSourceResponse(generate, media_type='text/event-stream')
 
+
+    if stop_words:
+        stop_words += ["Observation:", "Observation:\n"]  #  添加停止词
+    else:
+        stop_words = ["Observation:", "Observation:\n"]
     stop_words_ids = [tokenizer.encode(s)
                       for s in stop_words] if stop_words else None
     if query is _TEXT_COMPLETION_CMD:
@@ -431,18 +672,28 @@ async def create_chat_completion(request: ChatCompletionRequest):
                                               gen_kwargs=gen_kwargs,
                                               system=system)
     else:
-        response, _ = model.chat(
-            tokenizer,
-            query,
-            history=history,
-            system=system,
-            stop_words_ids=stop_words_ids,
-            **gen_kwargs,
-        )
+        prompt = build_planning_prompt(TOOLS, query)  # 组织prompt
+        model.generation_config.do_sample = False  # greedy 禁用采样，贪婪
+        response, _ = model.chat(tokenizer, prompt, history=history_tmp,
+                                 stop_words_ids=stop_words_ids)
+        while "Final Answer:" not in response:  # 出现final Answer时结束
+            api_output = use_api(TOOLS, response)  # 抽取入参并执行api
+            api_output = str(api_output)  # 部分api工具返回结果非字符串格式需进行转化后输出
+            if "no tool founds" == api_output:
+                break
+            print("\033[32m" + response + "\033[0m" + "\033[34m" + ' ' + api_output + "\033[0m")
+            prompt = prompt + response + ' ' + api_output  # 合并api输出
+            response, _ = model.chat(tokenizer, prompt, history=history_tmp, stop_words_ids=stop_words_ids,system=system)  # 继续生成
+
+        # print("\033[32m" + response + "\033[0m")
         print('<chat>')
-        pprint(history, indent=2)
+        pprint(history_tmp, indent=2)
         print(f'{query}\n<!-- *** -->\n{response}\n</chat>')
     _gc()
+    response = response.split('Final Answer:')[-1]
+    history_tmp.append((query,response))
+    if len(history_tmp)>7:
+        del history_tmp[:len(history_tmp) - 7]
 
     response = trim_stop_words(response, stop_words)
     if request.functions:

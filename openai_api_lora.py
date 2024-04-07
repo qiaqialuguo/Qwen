@@ -6,6 +6,7 @@
 
 import base64
 import copy
+import datetime
 import json
 import time
 from argparse import ArgumentParser
@@ -420,7 +421,7 @@ async def create_chat_completion(request: ChatCompletionRequest):
                            request.model,
                            stop_words,
                            gen_kwargs,
-                           system=system)
+                           system='你的回答在5个字内')
         return EventSourceResponse(generate, media_type='text/event-stream')
 
     stop_words_ids = [tokenizer.encode(s)
@@ -429,19 +430,25 @@ async def create_chat_completion(request: ChatCompletionRequest):
         response = text_complete_last_message(history,
                                               stop_words_ids=stop_words_ids,
                                               gen_kwargs=gen_kwargs,
-                                              system=system)
+                                              system='你的回答在5个字内')
     else:
+        print(datetime.datetime.now())
+        time.sleep(100000)
+        start_time = time.time()
         response, _ = model.chat(
             tokenizer,
             query,
             history=history,
-            system=system,
+            system='你的回答在5个字内',
             stop_words_ids=stop_words_ids,
             **gen_kwargs,
         )
-        print('<chat>')
+        end_time = time.time()
         pprint(history, indent=2)
-        print(f'{query}\n<!-- *** -->\n{response}\n</chat>')
+        print(f'问题：{query}\n回答：{response}\n')
+        print('生成耗时：', end_time - start_time, '文字长度：', len(response), '每秒字数：',
+               len(response)/(end_time - start_time))
+        print(datetime.datetime.now())
     _gc()
 
     response = trim_stop_words(response, stop_words)
@@ -490,7 +497,7 @@ async def predict(
                                            query,
                                            history=history,
                                            stop_words_ids=stop_words_ids,
-                                           system=system,
+                                           system="请将回复限制在50字内",
                                            **gen_kwargs)
     for _new_response in response_generator:
         if len(_new_response) <= delay_token_num:
@@ -589,18 +596,18 @@ if __name__ == '__main__':
         device_map = 'auto'
 
     model = AutoModelForCausalLM.from_pretrained(
-        args.checkpoint_path,
+        '/opt/large-model/qwen/qwen1/Qwen/finetune/output_qwen',
         device_map=device_map,
         trust_remote_code=True,
         resume_download=True
-        , bnb_4bit_compute_dtype=torch.float16
-        , load_in_4bit=True
+    , bnb_4bit_compute_dtype = torch.float16
+    , load_in_4bit = True
     ).eval()
 
     model.generation_config = GenerationConfig.from_pretrained(
         args.checkpoint_path,
         trust_remote_code=True,
-        resume_download=True
+        resume_download=True,
     )
 
     uvicorn.run(app, host=args.server_name, port=args.server_port, workers=1)
