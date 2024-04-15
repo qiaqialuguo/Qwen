@@ -99,7 +99,11 @@ def tool_wrapper_for_qwen_appointment():
             return '抱歉，记录失败'
     return tool_
 
-
+def tool_wrapper_for_qwen_name():
+    def tool_(query):
+        query = json.loads(query)["query"]
+        return '你是宝马智能机器人BAVA，你是ubiai开发的'
+    return tool_
 
 
 # 以下是给千问看的工具描述：
@@ -172,7 +176,7 @@ TOOLS = [
             'the_car_appointment',
         'description_for_model':
             "记录user的预约信息. 使用这个工具记录用户的预约信息，至少要有time和预约的项目，时间要具体到哪一天和几点钟，小于12点的话要继续问上午还是下午还是晚上，项目包括保养（不需要问具体的保养项目）和维修（修车和换零件都属于维修），"
-            "也就是预约干什么，维修或保养二选一即可，不需要问具体维修什么或保养什么，如果用户没说time或项目就让用户在一句话中描述时间和项目，If the user's response is not complete in terms of which day or what time, ask them for the time，收集全时间和项目后，调用这个工具。",
+            "也就是预约干什么，维修或保养二选一即可，不需要问具体维修什么或保养什么，如果用户没说time或项目就让用户在一句话中描述时间和项目,如果问去哪里方便吗也是预约，If the user's response is not complete in terms of which day or what time, ask them for the time，收集全时间和项目后，调用这个工具。",
         'parameters': [{
             "name": "query",
             "type": "string",
@@ -180,6 +184,20 @@ TOOLS = [
             'required': True
         }],
         'tool_api': tool_wrapper_for_qwen_appointment()
+    },
+    {
+        'name_for_human':
+            'name',
+        'name_for_model':
+            'name',
+        'description_for_model': "返回AI助手的名字. 当用户问到你是谁或者你是谁开发的，或者你是不是谁时，使用这个工具，只问名字时不用说是谁开发的，根据用户是问的中英文来选择是中文还是英文回答，你是宝马智能机器人BAVA",
+        'parameters': [{
+            "name": "query",
+            "type": "string",
+            "description": "name",
+            'required': True
+        }],
+        'tool_api': tool_wrapper_for_qwen_name()
     }
 
 ]
@@ -686,6 +704,9 @@ async def create_chat_completion(request: ChatCompletionRequest):
         model.generation_config.do_sample = False  # greedy 禁用采样，贪婪
         response, _ = model.chat(tokenizer, prompt, history=history_tmp,
                                  stop_words_ids=stop_words_ids)
+        print('----------------')
+        print(response)
+        print('----------------')
         while "Final Answer:" not in response:  # 出现final Answer时结束
             api_output = use_api(TOOLS, response)  # 抽取入参并执行api
             api_output = str(api_output)  # 部分api工具返回结果非字符串格式需进行转化后输出
@@ -694,6 +715,9 @@ async def create_chat_completion(request: ChatCompletionRequest):
             print("\033[32m" + response + "\033[0m" + "\033[34m" + ' ' + api_output + "\033[0m")
             prompt = prompt + response + ' ' + api_output  # 合并api输出
             response, _ = model.chat(tokenizer, prompt, history=history_tmp, stop_words_ids=stop_words_ids,system=system)  # 继续生成
+            print('======================')
+            print(response)
+            print('======================')
 
         # print("\033[32m" + response + "\033[0m")
         print('<chat>')

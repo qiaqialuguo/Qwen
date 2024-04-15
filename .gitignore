@@ -11,3 +11,4 @@ build
 /private/
 /finetune/output_qwen/
 /finetune/output_qwen_test/
+/venv

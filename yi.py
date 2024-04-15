@@ -28,5 +28,6 @@ response = tokenizer.decode(output_ids[0][input_ids.shape[1]:], skip_special_tok
 # Model response: "Hello! How can I assist you today?"
 print(response)
 end_time = time.time()
-print('生成耗时：', end_time - start_time, '文字长度：', len(response), '每秒字数：',
-              len(response) / (end_time - start_time))
+print('\033[1;44m回答完毕，耗时：', end_time - start_time, '答案长度：', len(response), '每秒字数：',
+                  len(response) / (end_time - start_time), '输入长度:', len(query), '显存增加:',
+                  end_mem-start_mem/1000, 'G\033[0m')
