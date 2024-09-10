@@ -714,6 +714,7 @@ async def create_chat_completion(request: ChatCompletionRequest):
                 break
             print("\033[32m" + response + "\033[0m" + "\033[34m" + ' ' + api_output + "\033[0m")
             prompt = prompt + response + ' ' + api_output  # 合并api输出
+            # print(prompt)
             response, _ = model.chat(tokenizer, prompt, history=history_tmp, stop_words_ids=stop_words_ids,system=system)  # 继续生成
             print('======================')
             print(response)
